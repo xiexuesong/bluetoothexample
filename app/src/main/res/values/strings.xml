@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">bluetoothexample</string>
+    <string name="search_bluetooth">搜索蓝牙设备</string>
+    <string name="cancel_search">取消搜索</string>
+</resources>
