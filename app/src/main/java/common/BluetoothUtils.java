@@ -14,8 +14,12 @@ import android.widget.Toast;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import callback.DeviceCallBack;
@@ -31,7 +35,7 @@ import static android.bluetooth.BluetoothDevice.ACTION_FOUND;
  * Created by admin on 2018/9/12.
  */
 
-public class BluetoothUtils extends BluetoothGattCallback {
+public class BluetoothUtils {
 
     private BluetoothAdapter bluetoothAdapter;
 
@@ -39,9 +43,11 @@ public class BluetoothUtils extends BluetoothGattCallback {
     private DeviceCallBack deviceCallBack;
     private Context context;
     private BluetoothDevice bluetoothDeviceMatch; //匹配的蓝牙设备
+    private BleServerSocketThread bleServerSocketThread = null;
+    private BluetoothSocket bluetoothSocket = null;
 
     private final UUID MY_UUID = UUID
-            .fromString("abcd1234-ab12-ab12-ab12-abcdef123456");
+            .fromString("405c9183-6fbf-4ac9-a8a9-e442a3f0de50");
 
     public BluetoothUtils(DeviceCallBack deviceCallBack, Context context) {
         this.context = context;
@@ -49,7 +55,9 @@ public class BluetoothUtils extends BluetoothGattCallback {
         bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         initBroadcast(context);
         initListArray();//初始化可搜索的蓝牙设备集合
-        new BleServerSocketThread(bluetoothAdapter).start();
+
+        bleServerSocketThread = new BleServerSocketThread(bluetoothAdapter);
+        bleServerSocketThread.start();
     }
 
 
@@ -75,49 +83,68 @@ public class BluetoothUtils extends BluetoothGattCallback {
         discoverableIntent.putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 300);
         context.startActivity(discoverableIntent);
         bluetoothAdapter.startDiscovery();
-    /*    bluetoothAdapter.getBluetoothLeScanner().startScan(new ScanCallback() {
-            @Override
-            public void onScanResult(int callbackType, ScanResult result) {
-                super.onScanResult(callbackType, result);
-                BluetoothDevice bluetoothDevice = result.getDevice();
-                if(!listDevices.contains(bluetoothDevice)){
-                    ScanRecord scanRecord = result.getScanRecord();
-                    BleAdvertisedData bleAdvertisedData = BleUtil.parseAdertisedData(scanRecord.getBytes());
-                    Log.i("MDL","name:" + bleAdvertisedData.getName() + " uuid:" + bleAdvertisedData.getUuids());
-                    listDevices.add(bluetoothDevice);
-                    deviceCallBack.scanResult(bluetoothDevice);
-                }
-            }
-
-            @Override
-            public void onBatchScanResults(List<ScanResult> results) {
-                super.onBatchScanResults(results);
-                Log.i("MDL","size:" + results.size());
-            }
-
-            @Override
-            public void onScanFailed(int errorCode) {
-                super.onScanFailed(errorCode);
-                Log.i("MDL","errorCode:" + errorCode);
-            }
-        });*/
     }
 
     /**
      * 匹配
      */
-    public void connectDevice(BluetoothDevice bluetoothDevice) {
+    public void connectDevice(final BluetoothDevice bluetoothDevice) {
         this.bluetoothDeviceMatch = bluetoothDevice;
-      //  bluetoothDevice.createBond();//高于21直接配对
+        //  bluetoothDevice.createBond();//高于21直接配对
         try {
-            BluetoothSocket bluetoothSocket = bluetoothDevice.createInsecureRfcommSocketToServiceRecord(MY_UUID);
-            bluetoothSocket.connect();
-            OutputStream os = bluetoothSocket.getOutputStream();
-            os.write("师姐你好".getBytes("utf-8"));
-            os.flush();
+            if(bluetoothSocket == null) {
+                bluetoothSocket = bluetoothDevice.createInsecureRfcommSocketToServiceRecord(MY_UUID);
+            }
+            Log.i("MDL","connect_state:" + bluetoothSocket.isConnected());
+            if(!bluetoothSocket.isConnected()){
+                bluetoothSocket.connect();
+                Log.i("MDL","conn1111ect_state:" + bluetoothSocket.isConnected());
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    public void sendMsg(){
+        if(!bluetoothSocket.isConnected()) {
+            try {
+                bluetoothSocket.connect();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        Log.i("MDL","状态:" + bluetoothSocket.isConnected() );
+        OutputStream os = null;
+        try {
+            os = bluetoothSocket.getOutputStream();
+            os.write("小姐姐你好".getBytes());
+            Log.i("MDL","状态:" + bluetoothSocket.isConnected());
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+           /* if (os != null) {
+                try {
+             //       os.close();
+             //       Log.i("MDL","六关闭后:" + bluetoothSocket.isConnected());
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }*/
+        }
+    }
+
+    /**
+     * 得到已经绑定过的蓝牙
+     */
+    public BluetoothDevice getBindDevice() {
+        Set<BluetoothDevice> set = bluetoothAdapter.getBondedDevices();
+        Iterator iterator = set.iterator();
+        while (iterator.hasNext()) {
+            BluetoothDevice bluetoothDevice = (BluetoothDevice) iterator.next();
+            return bluetoothDevice;
+        }
+        return null;
     }
 
     /**
@@ -127,6 +154,8 @@ public class BluetoothUtils extends BluetoothGattCallback {
         if (bluetoothAdapter != null) {
             bluetoothAdapter.cancelDiscovery();
         }
+
+
     }
 
     private class BlueBroadCastReceiver extends BroadcastReceiver {
@@ -149,14 +178,14 @@ public class BluetoothUtils extends BluetoothGattCallback {
                     Log.i("MDL", "搜索结束");
                     break;
                 case ACTION_BOND_STATE_CHANGED:
-                    if(bluetoothDeviceMatch != null) {
+                    if (bluetoothDeviceMatch != null) {
                         Log.i("MDL", "state:" + bluetoothDeviceMatch.getBondState());
                         int state = bluetoothDeviceMatch.getBondState();
                         if (state == 12) {
                             Toast.makeText(context, "配对成功", Toast.LENGTH_SHORT).show();
                             //开启两线程
-                            new BleServerSocketThread(bluetoothAdapter).start();
-                            new BleSocket(bluetoothDeviceMatch).start();
+                            // new BleServerSocketThread(bluetoothAdapter).start();
+                            //  new BleSocket(bluetoothDeviceMatch).start();
                         } else if (state == 11) {
                             Toast.makeText(context, "正在配对", Toast.LENGTH_SHORT).show();
                         } else {

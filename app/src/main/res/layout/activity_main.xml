@@ -21,6 +21,13 @@
         app:layout_constraintLeft_toRightOf="@id/search_bluetooth"
         android:onClick="click"/>
 
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:onClick="sendMsg"
+        android:text="发送数据"
+        app:layout_constraintLeft_toRightOf="@id/cancel_search"/>
+
 
     <android.support.v7.widget.RecyclerView
         android:id="@+id/recycleView"

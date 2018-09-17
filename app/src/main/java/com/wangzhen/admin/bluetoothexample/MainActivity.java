@@ -2,6 +2,7 @@ package com.wangzhen.admin.bluetoothexample;
 
 import android.bluetooth.BluetoothDevice;
 import android.graphics.Color;
+import android.os.Environment;
 import android.support.constraint.ConstraintLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -15,19 +16,28 @@ import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.TextView;
 
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
 import callback.DeviceCallBack;
 import callback.OnItemClickListener;
 import common.BluetoothUtils;
+import common.LogUtil;
 
-public class MainActivity extends AppCompatActivity implements DeviceCallBack , OnItemClickListener {
+public class MainActivity extends AppCompatActivity implements DeviceCallBack, OnItemClickListener {
 
     private RecyclerView recyclerView;
     private BluetoothUtils bluetoothUtils;
     private List<BluetoothDevice> list_device;
     private DeviceAdapter deviceAdapter;
+
+    private byte[] data;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -39,6 +49,55 @@ public class MainActivity extends AppCompatActivity implements DeviceCallBack , 
         initListArray();
         initBlueTooth();
         setListViewAdapter();
+
+    //    data = readSdFile();//测试读取方法
+
+    }
+
+    public void sendMsg(View view){
+        bluetoothUtils.sendMsg();
+    }
+
+    private byte[] readSdFile() {
+        String path = Environment.getExternalStorageDirectory() + File.separator + "1111.txt";
+        Log.i("MDL", "path:" + path);
+        File file = new File(path);
+        InputStream inputStream = null;
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        if (file.exists()) {
+            try {
+                inputStream = new FileInputStream(file);
+                byte[] data = new byte[20];
+                int len;
+                while ((len = inputStream.read(data)) != -1) {
+                    byteArrayOutputStream.write(data, 0, len);
+                }
+                LogUtil.i("MDL", byteArrayOutputStream.toString());
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            } finally {
+                if (inputStream != null) {
+                    try {
+                        inputStream.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+                if (byteArrayOutputStream != null) {
+                    try {
+                        byteArrayOutputStream.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        } else {
+            Log.i("MDL", "文件不存在");
+        }
+        return byteArrayOutputStream.toByteArray();
+
     }
 
     private void setListViewAdapter() {
@@ -46,24 +105,23 @@ public class MainActivity extends AppCompatActivity implements DeviceCallBack , 
         recyclerView.setAdapter(deviceAdapter);
         LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this);
         recyclerView.setLayoutManager(linearLayoutManager);
-
-
     }
 
     private void initListArray() {
         list_device = new ArrayList<>();
-
     }
 
     private void initBlueTooth() {
         bluetoothUtils = new BluetoothUtils(this, this);
     }
 
-
     public void click(View view) {
         switch (view.getId()) {
             case R.id.search_bluetooth:
                 bluetoothUtils.searchBlueToothDevice();
+    //            BluetoothDevice bluetoothDevice = bluetoothUtils.getBindDevice();
+      //          list_device.add(bluetoothDevice);
+                deviceAdapter.notifyDataSetChanged();
                 break;
             case R.id.cancel_search:
                 bluetoothUtils.cancleDiscovery();
@@ -81,11 +139,12 @@ public class MainActivity extends AppCompatActivity implements DeviceCallBack , 
 
     @Override
     public void onItemClick(View view, int position) {
+        bluetoothUtils.cancleDiscovery();
         bluetoothUtils.connectDevice(list_device.get(position));
 
     }
 
-    class DeviceAdapter extends RecyclerView.Adapter{
+    class DeviceAdapter extends RecyclerView.Adapter {
 
         private OnItemClickListener onItemClickListener;
 
@@ -105,23 +164,23 @@ public class MainActivity extends AppCompatActivity implements DeviceCallBack , 
             BluetoothDevice bluetoothDevice = list_device.get(position);
             if (bluetoothDevice.getName() == null) {
                 deviceHolder.tv_name.setText("空名字");
-            }else {
+            } else {
                 deviceHolder.tv_name.setText(list_device.get(position).getName());
             }
             if (bluetoothDevice.getAddress() == null) {
                 deviceHolder.tv_address.setText("空地址");
-            }else {
+            } else {
                 deviceHolder.tv_address.setText(list_device.get(position).getAddress());
             }
             if (bluetoothDevice.getUuids() == null) {
                 deviceHolder.tv_uuid.setText("空UUID");
-            }else {
+            } else {
                 deviceHolder.tv_uuid.setText(list_device.get(position).getUuids().toString());
             }
             deviceHolder.constrainLayout.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    onItemClickListener.onItemClick(v,position);
+                    onItemClickListener.onItemClick(v, position);
                 }
             });
         }
