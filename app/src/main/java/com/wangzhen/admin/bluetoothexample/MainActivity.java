@@ -50,54 +50,10 @@ public class MainActivity extends AppCompatActivity implements DeviceCallBack, O
         initBlueTooth();
         setListViewAdapter();
 
-    //    data = readSdFile();//测试读取方法
-
     }
 
     public void sendMsg(View view){
         bluetoothUtils.sendMsg();
-    }
-
-    private byte[] readSdFile() {
-        String path = Environment.getExternalStorageDirectory() + File.separator + "1111.txt";
-        Log.i("MDL", "path:" + path);
-        File file = new File(path);
-        InputStream inputStream = null;
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        if (file.exists()) {
-            try {
-                inputStream = new FileInputStream(file);
-                byte[] data = new byte[20];
-                int len;
-                while ((len = inputStream.read(data)) != -1) {
-                    byteArrayOutputStream.write(data, 0, len);
-                }
-                LogUtil.i("MDL", byteArrayOutputStream.toString());
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
-                e.printStackTrace();
-            } finally {
-                if (inputStream != null) {
-                    try {
-                        inputStream.close();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                }
-                if (byteArrayOutputStream != null) {
-                    try {
-                        byteArrayOutputStream.close();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
-        } else {
-            Log.i("MDL", "文件不存在");
-        }
-        return byteArrayOutputStream.toByteArray();
-
     }
 
     private void setListViewAdapter() {

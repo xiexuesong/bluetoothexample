@@ -60,7 +60,6 @@ public class BluetoothUtils {
         bleServerSocketThread.start();
     }
 
-
     private void initListArray() {
         listDevices = new ArrayList<>();//搜索到的设备
     }
